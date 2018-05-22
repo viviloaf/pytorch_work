@@ -17,7 +17,6 @@ by the optim package:
 import torch
 
 
-
 # N is bath size; D_in is input dimension
 # H is hidden dimension; D_out is output dimension
 N, D_in, H, D_out = 64, 1000, 100, 10
