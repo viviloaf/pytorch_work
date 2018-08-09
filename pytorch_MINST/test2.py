@@ -30,4 +30,5 @@ fig = plt.figure()
 for i in range(6):
     ax = fig.add_subplot(231+i)
     ax.imshow(data[i][0])
+plt.show()
 fig
