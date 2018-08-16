@@ -5,11 +5,11 @@ from torch.optim import lr_scheduler
 #import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-#import torchvision.models as models
+import torchvision.models as models
 import time
 import copy
 
-from resnet import resnet18
+#from resnet import resnet18
 
 # Sanity check for CUDA or CPU 
 use_cuda = torch.cuda.is_available()
@@ -48,6 +48,9 @@ shuffle=True,
 shuffle=True, 
 **kwargs),
 }
+
+# Convert MNIST greyscale into something Resnet can read
+#im = numpy.dstack((im,im,im))
 
 # Easily load MNIST data based on state dataloaders.train or dataloaders.test
 dataloaders = {x: torch.utils.data.DataLoader(mnist[x], batch_size=4, shuffle=True, num_workers=4) for x in ['train', 'test']}
@@ -163,8 +166,8 @@ class channel_add(torch.nn.Module):
 #conversion_model = channel_add()
 #conversion_model = conversion_model.to(device)
 
-#model_ft = models.resnet18(pretrained=True)
-model_ft = resnet18(pretrained=False)
+model_ft = models.resnet18(pretrained=True)
+#model_ft = resnet18(pretrained=False)
 num_ftrs = model_ft.fc.in_features
 model_ft.fc = nn.Linear(num_ftrs, 10)
 
@@ -188,8 +191,8 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 # This freezes the prarameters so that gradients are not computed in 'backwards'\
 # See here: http://pytorch.org/docs/notes/autograd.html#excluding-subgraphs-from-backward
 
-model_conv = resnet18(pretrained=False)
-#model_conv = models.resnet18(pretrained=True)
+#model_conv = resnet18(pretrained=False)
+model_conv = models.resnet18(pretrained=True)
 for param in model_conv.parameters():
     param.requires_grad = False
     
