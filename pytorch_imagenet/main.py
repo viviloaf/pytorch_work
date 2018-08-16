@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-#import torchvision
+import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-#import torchvision.models as models
+import torchvision.models as models
 import time
 import copy
-
-from resnet import resnet18
+import os
+#from resnet import resnet18
 
 # Sanity check for CUDA or CPU 
 use_cuda = torch.cuda.is_available()
@@ -22,18 +22,13 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 # they would do this other than to make that extremely long line below, declaring
 # the dataset, shorter. What do you think?
  
+# Function to load data
+
 # Load data here under one variable and 2 attributes to easily reference later in code
-mnist ={
-    'train': torch.utils.data.DataLoader(
-            datasets.MNIST(
-                    './data', 
-                    train=True, 
-                    download=True, 
-                    transform=transforms.Compose([
-                            transforms.ToTensor(), 
-                            transforms.Normalize((0.1307,), (0.3081,))])), 
-#batch_size=100, 
-shuffle=True, 
+imagenet ={
+    'train': torchvision.datasets.ImageFolder(
+            os.path.join(data_dir, 'train')
+            
 **kwargs),
     
     'test': torch.utils.data.DataLoader(
@@ -49,7 +44,7 @@ shuffle=True,
 **kwargs),
 }
 
-# Easily load MNIST data based on state dataloaders.train or dataloaders.test
+# Easily load data based on state dataloaders.train or dataloaders.test
 dataloaders = {x: torch.utils.data.DataLoader(mnist[x], batch_size=4, shuffle=True, num_workers=4) for x in ['train', 'test']}
 
 # Load the size of datasets to use for statistics later 
@@ -188,7 +183,7 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 # This freezes the prarameters so that gradients are not computed in 'backwards'\
 # See here: http://pytorch.org/docs/notes/autograd.html#excluding-subgraphs-from-backward
 
-model_conv = resnet18(pretrained=False)
+#model_conv = resnet18(pretrained=False)
 #model_conv = models.resnet18(pretrained=True)
 for param in model_conv.parameters():
     param.requires_grad = False
