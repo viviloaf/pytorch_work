@@ -4,6 +4,10 @@
 Created on Mon May 27 12:49:54 2019
 
 @author: vinh
+Create a folder structure called /data/jtx2
+
+Rename folder of images to "018_11_11_01"
+
 """
 from __future__ import print_function, division
 import os
@@ -200,8 +204,10 @@ transformed_dataset = RobotDataset(csv_file='data/jtx2/data_2018_11_11_13- Q 2nd
 #
 #    if i == 3:
 #        break
+batch_size = 4
+total_imgs = len(jtx2_values)
 
-dataloader = DataLoader(transformed_dataset, batch_size=4, shuffle=True, num_workers=4)
+dataloader = DataLoader(transformed_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 # Helper function to show a batch so we can see what is happening
 
@@ -213,7 +219,7 @@ def show_jtx2_batch(sample_batched):
     im_size = images_batch.size(2)
     grid_border_size = 2
     
-    grid = utils.make_grid(images_batch, nrow = 1, padding = 3)
+    grid = utils.make_grid(images_batch, nrow = 1, padding = 3, )
     plt.imshow(grid.numpy().transpose((1, 2, 0)))
     #print('Data: {}'.format(jtx2_batch))
     
@@ -227,7 +233,7 @@ for i_batch, sample_batched in enumerate(dataloader):
           'Batch Size, Tensor Dimension: {}'.format(sample_batched['jtx2'].size()))
     
     # Observe 4th batch and stop
-    if i_batch == 3:
+    if i_batch == 4: #(total_imgs/batch_size): #Only use this if iterating the whole dataset
         plt.figure()
         show_jtx2_batch(sample_batched)
         plt.axis('off')
