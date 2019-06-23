@@ -24,25 +24,25 @@ warnings.filterwarnings("ignore")
 
 jtx2_values = pd.read_csv('data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv')
 
-n = 30
-img_name = jtx2_values.iloc[n, 0]
-jtx2 = jtx2_values.iloc[n, 1:].as_matrix()
-jtx2 = jtx2.astype('int').reshape(1, 4)
-
+#n = 30
+#img_name = jtx2_values.iloc[n, 0]
+#jtx2 = jtx2_values.iloc[n, 1:].as_matrix()
+#jtx2 = jtx2.astype('int').reshape(1, 4)
+#
 #print('Image name: {}'.format(img_name))
 #print('Array shape: {}'.format(jtx2.shape))
-#print('Data: {}'.format(jtx2[:4]))
-
+#print('Data: {}'.format(jtx2[:1]))
+#
 def show_img(image, jtx2):
     """Show images with landmarks"""
     print('Data: {}'.format(jtx2))
     plt.imshow(image)
     #plt.scatter(landmarks[:, 0], landmarks[:, 1], s=10, marker='.', c='r')
     plt.pause(0.001) #pause so plots are updated
-    
+#    
 #plt.figure()
 #show_img(io.imread(os.path.join('data/jtx2/', img_name)), jtx2)
-
+#
 #plt.show()
 #print(jtx2)
 """
@@ -88,24 +88,24 @@ class RobotDataset(Dataset):
 robot_dataset = RobotDataset(csv_file='data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv',
                              root_dir='data/jtx2/')
 
-fig = plt.figure()
-
-for i in range(len(robot_dataset)):
-    num = 4
-    sample = robot_dataset[i]
-    
-    print('Sample: #{},'.format(i), 'H x W x C: {},'.format(sample['image'].shape), 
-          'Array Size: {}'.format(sample['jtx2'].shape))
-    
-    #ax = plt.subplot(1, num, i+1)
-    #plt.tight_layout()
-    #ax.set_title('Sample #{}'.format(i))
-    #ax.axis('off')
-    #show_img(**sample)
-    
-    if i == (num-1):
-        plt.show()
-        break
+#fig = plt.figure()
+#
+#for i in range(len(robot_dataset)):
+#    num = 20
+#    sample = robot_dataset[i]
+#    
+#    print('Sample: #{},'.format(i), 'H x W x C: {},'.format(sample['image'].shape), 
+#          'Array Size: {}'.format(sample['jtx2'].shape))
+#    
+#    ax = plt.subplot(1, num, i+1)
+#    plt.tight_layout()
+#    ax.set_title('Sample #{}'.format(i))
+#    ax.axis('off')
+#    show_img(**sample)
+#    
+#    if i == (num-1):
+#        plt.show()
+#        break
     
 # Below is a transform function, just in case
 
@@ -216,8 +216,8 @@ def show_jtx2_batch(sample_batched):
     images_batch, jtx2_batch = \
         sample_batched['image'], sample_batched['jtx2']
     batch_size = len(images_batch)
-    im_size = images_batch.size(2)
-    grid_border_size = 2
+    #im_size = images_batch.size(2)
+    #grid_border_size = 2
     
     grid = utils.make_grid(images_batch, nrow = 1, padding = 3, )
     plt.imshow(grid.numpy().transpose((1, 2, 0)))
