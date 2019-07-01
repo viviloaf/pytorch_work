@@ -17,6 +17,9 @@ from torchvision import transforms, utils
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import math
+import time
+import datetime
 
 
 import warnings
@@ -25,10 +28,13 @@ warnings.filterwarnings("ignore")
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = torch.cuda.is_available()
 
-jtx2_values = pd.read_csv('data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv')
+# Empty old CUDA memory
+torch.cuda.empty_cache()
 
-n = 30
-img_name = jtx2_values.iloc[n, 0]
+jtx2_values = pd.read_csv('data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv')
+eval_values = pd.read_csv('data/jtx2/data_2018-11-11-15 - Q 1st floor training set.csv')
+
+
 #jtx2 = jtx2_values.iloc[n, 1:].as_matrix()
 #jtx2 = jtx2.astype('int').reshape(1, 4)
 
@@ -38,9 +44,21 @@ img_name = jtx2_values.iloc[n, 0]
 #    plt.imshow(image)
 #    #plt.scatter(landmarks[:, 0], landmarks[:, 1], s=10, marker='.', c='r')
 #    plt.pause(0.001) #pause so plots are updated
+
+# Edit these values here while training
+# note, wrap the entire training log into a for loop and train a lot of sessions
+
+number = 2
+filename = "net1_%d_1" % (number)
+text = filename
+batch_size = 2 ** number
+epoch = 50
+
+total_imgs = len(jtx2_values)
+threads=16
     
 class RobotDataset(Dataset):
-    """Movement Dataset"""
+    """Movement Dataset - Q 2nd Floor"""
     
     def __init__(self, csv_file, root_dir, transform=None):
         """
@@ -81,16 +99,18 @@ class ToTensor(object):
         image = image.transpose((2, 0, 1))
         return {'image': torch.from_numpy(image).float(), 
                 'jtx2': torch.from_numpy(jtx2).float()}
-
         
 transformed_dataset = RobotDataset(csv_file='data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv',
                              root_dir='data/jtx2/', 
                              transform=transforms.Compose([ToTensor()]))
 
-batch_size = 4
-total_imgs = len(jtx2_values)
+transformed_eval_dataset = RobotDataset(csv_file='data/jtx2/data_2018-11-11-15 - Q 1st floor training set.csv',
+                             root_dir='data/jtx2/', 
+                             transform=transforms.Compose([ToTensor()]))
 
-dataloader = DataLoader(transformed_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+dataloader = DataLoader(transformed_dataset, batch_size=batch_size, shuffle=True, num_workers=threads, pin_memory=True)
+evaluation_dataloader = DataLoader(transformed_eval_dataset, batch_size=batch_size, shuffle=False, num_workers=threads, pin_memory=True)
+# Host to GPU copies are much faster when they come from pinned (page-locked) memory. 
 
 # Helper function to show a batch so we can see what is happening
 
@@ -177,12 +197,25 @@ class EndToEndNet(nn.Module):
         return x
 
 # Initialize Model
-net = EndToEndNet().to(device)
+net = EndToEndNet().to(device, non_blocking=True)
+# Non Blocking is an optimization for CUDA for asynchronous GPU copies
+# This works in conjunction with pin_memory=true
+
+now = datetime.datetime.now()
+
+loss = None
+# See URL below, cleans loss for the next iteration of the loop 
+# https://discuss.pytorch.org/t/best-practices-for-maximum-gpu-utilization/13863/6
     
 # Initialize Optimizer
 # Placeholder
 
-for i in range(2):
+# print 
+print("batch size", batch_size, "epochs", epoch, "cpu threads", threads, "date", now, )
+print(net)
+
+for i in range(epoch):
+    since = time.time()
     count = 0
     total = 0
     for i_batch, sample_batched in enumerate(dataloader):
@@ -194,9 +227,42 @@ for i in range(2):
         predict = net(sample_batched['image'])                        # Forward pass
         loss = criterion(predict, sample_batched['jtx2'])            # Calculate loss
         loss.backward()                                       # Backward pass (calculate gradients)
-        optimizer.step()                                      # Update tunable parameters                                # Forward pass
-        print('Epoch',i,'batch',i_batch,'loss', float(loss.item()))
+        optimizer.step()                                      # Update tunable parameters
+        #print('Epoch',i,'batch',i_batch,'MSE loss', float(loss.item()), "sqrt loss", math.sqrt(float(loss.item())))
         total += float(loss.item())
         count += 1
-    print('Epoch',i,'AVG loss',total/count)
-torch.save(net.state_dict(), './net.pt')
+    print('Epoch',i,'AVG loss',total/count, "SQRT Loss", math.sqrt(total/count), "time", time.time()-since)
+
+# Evaluation Mode
+
+net.eval()
+
+with torch.no_grad():
+    since = time.time()
+    for i_batch, sample_batched in enumerate(evaluation_dataloader):
+        
+        sample_batched['image'] = sample_batched['image'].cuda()
+        sample_batched['jtx2'] = sample_batched['jtx2'].cuda()
+        
+        # Compute Output
+        predict = net(sample_batched['image'])
+        
+        # Compute Evaluation loss
+        evaluation_loss = criterion(predict, sample_batched['jtx2'])
+        total += float(evaluation_loss.item())
+        count += 1
+    print('Evaluation: ''AVG loss',total/count, "Eval SQRT Loss", math.sqrt(total/count), "time", time.time()-since)
+        
+torch.save(net.state_dict(), './%s.pt' % (filename,))
+torch.cuda.empty_cache()
+
+# Training Loop Optimization
+# del loss
+
+# CUDA Optimzations have been added
+# pin_memory = True
+# non_blocking = True
+
+# Net 1.2+, 2.x, 3.x has evaluation data attached
+
+# Add ability to write all print statements to txt file. Properties can all be changed above
