@@ -1,5 +1,6 @@
 1: batch size 4 epochs 25 cpu threads 8 date 2019-06-26 22:17:38.587110
 
+NOTE: These used the standard initialization method: stdv = 1. / math.sqrt(self.weight.size(1)) self.weight.data.uniform_(-stdv, stdv) if self.bias is not None: self.bias.data.uniform_(-stdv, stdv)
 
 1.1: batch size 4 epochs 25 cpu threads 8 date 2019-06-27 00:47:29.467532
 
@@ -21,9 +22,30 @@ Eval SQRT Loss 19.14774820465051
 1.7: batch size 128 epochs 25 cpu threads 8 date 2019-06-27 05:43:22.785924
 Eval SQRT Loss 19.7549941359874
 
-1.8: 
+NOTE: These used a different initalization method: torch.nn.init.xavier_uniform(m.weight.data, nn.init.calculate_gain('relu'))
 
-2: batch size 10 epochs 50 cpu threads 8 date 2019-06-26 21:19:54.236379
+2.1: ('net2_1', 'batch size', 2, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-01 20:20:17.435685')
+Eval SQRT Loss', 19.54886363401239
 
-3: batch size 8 epochs 50 cpu threads 8 date 2019-06-26 23:46:58.217274
+2.2: ('net2_2', 'batch size', 4, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-02 00:30:52.476362')
+Eval SQRT Loss', 19.929585381984108
+
+2.3: ('net2_3', 'batch size', 8, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-02 01:39:03.498573')
+Eval SQRT Loss', 20.37127410036848
+
+2.4: ('net2_4', 'batch size', 16, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-02 02:32:01.175982')
+Eval SQRT Loss', 19.760371436662112
+
+2.5: ('net2_5', 'batch size', 32, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-02 03:08:57.704818')
+Eval SQRT Loss', 19.569230965014146
+
+2.6: ('net2_6', 'batch size', 64, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-02 03:36:38.012434')
+Eval SQRT Loss', 21.614803025360022
+
+2.7: ('net2_7', 'batch size', 128, 'epochs', 50, 'cpu threads', 8, 'date', '2019-07-02 09:13:59.891548')
+Eval SQRT Loss', 18.96692825025324
+
+2-off: batch size 10 epochs 50 cpu threads 8 date 2019-06-26 21:19:54.236379
+
+3-off: batch size 8 epochs 50 cpu threads 8 date 2019-06-26 23:46:58.217274
 

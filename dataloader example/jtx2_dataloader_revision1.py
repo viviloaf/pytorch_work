@@ -20,6 +20,8 @@ import torch.optim as optim
 import math
 import time
 import datetime
+import sys
+import logging
 
 
 import warnings
@@ -47,16 +49,11 @@ eval_values = pd.read_csv('data/jtx2/data_2018-11-11-15 - Q 1st floor training s
 
 # Edit these values here while training
 # note, wrap the entire training log into a for loop and train a lot of sessions
-
-number = 2
-filename = "net1_%d_1" % (number)
-text = filename
-batch_size = 2 ** number
+training_sessions = 1
 epoch = 50
-
 total_imgs = len(jtx2_values)
-threads=16
-    
+threads=8
+
 class RobotDataset(Dataset):
     """Movement Dataset - Q 2nd Floor"""
     
@@ -100,53 +97,6 @@ class ToTensor(object):
         return {'image': torch.from_numpy(image).float(), 
                 'jtx2': torch.from_numpy(jtx2).float()}
         
-transformed_dataset = RobotDataset(csv_file='data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv',
-                             root_dir='data/jtx2/', 
-                             transform=transforms.Compose([ToTensor()]))
-
-transformed_eval_dataset = RobotDataset(csv_file='data/jtx2/data_2018-11-11-15 - Q 1st floor training set.csv',
-                             root_dir='data/jtx2/', 
-                             transform=transforms.Compose([ToTensor()]))
-
-dataloader = DataLoader(transformed_dataset, batch_size=batch_size, shuffle=True, num_workers=threads, pin_memory=True)
-evaluation_dataloader = DataLoader(transformed_eval_dataset, batch_size=batch_size, shuffle=False, num_workers=threads, pin_memory=True)
-# Host to GPU copies are much faster when they come from pinned (page-locked) memory. 
-
-# Helper function to show a batch so we can see what is happening
-
-# ==============================================================================
-#def show_jtx2_batch(sample_batched):
-#    """Show images with motor data for a batch of samples"""
-#    images_batch, jtx2_batch = \
-#        sample_batched['image'], sample_batched['jtx2']
-#    batch_size = len(images_batch)
-#
-#    
-#    grid = utils.make_grid(images_batch, nrow = 1, padding = 3, )
-#    plt.imshow(grid.numpy().transpose((1, 2, 0)))
-#    #print('Data: {}'.format(jtx2_batch))
-#    
-#    for i in range(batch_size):
-#        plt.title('Batch #{} from DataLoader'.format(i_batch))
-#        
-#for i_batch, sample_batched in enumerate(dataloader):
-#    print('Batch #{}'.format(i_batch), 
-#          'Batch Size, C, H, W : {}'.format(sample_batched['image'].size()))
-#    print('Batch #{}'.format(i_batch),
-#          'Batch Size, Tensor Dimension: {}'.format(sample_batched['jtx2'].size()))
-#    
-#    # Observe 4th batch and stop
-#    if i_batch == 4: #(total_imgs/batch_size): #Only use this if iterating the whole dataset
-#        plt.figure()
-#        show_jtx2_batch(sample_batched)
-#        plt.axis('off')
-#        plt.ioff()
-#        plt.show()
-#        print("left_encoder,right_encoder,left_speed,right_speed: \n{}".format(sample_batched['jtx2']))
-#        #print('This shows successful conversion of datatype from a numpy array to a Tensor array')
-#        break
-# =============================================================================
-    
 class EndToEndNet(nn.Module):
     def __init__(self):
         super(EndToEndNet, self).__init__()
@@ -195,66 +145,170 @@ class EndToEndNet(nn.Module):
         x = self.fc4(x)
         #print(x.shape)
         return x
+# ==============================================================================
+#def show_jtx2_batch(sample_batched):
+#    """Show images with motor data for a batch of samples"""
+#    images_batch, jtx2_batch = \
+#        sample_batched['image'], sample_batched['jtx2']
+#    batch_size = len(images_batch)
+#
+#    
+#    grid = utils.make_grid(images_batch, nrow = 1, padding = 3, )
+#    plt.imshow(grid.numpy().transpose((1, 2, 0)))
+#    #print('Data: {}'.format(jtx2_batch))
+#    
+#    for i in range(batch_size):
+#        plt.title('Batch #{} from DataLoader'.format(i_batch))
+#        
+#for i_batch, sample_batched in enumerate(dataloader):
+#    print('Batch #{}'.format(i_batch), 
+#          'Batch Size, C, H, W : {}'.format(sample_batched['image'].size()))
+#    print('Batch #{}'.format(i_batch),
+#          'Batch Size, Tensor Dimension: {}'.format(sample_batched['jtx2'].size()))
+#    
+#    # Observe 4th batch and stop
+#    if i_batch == 4: #(total_imgs/batch_size): #Only use this if iterating the whole dataset
+#        plt.figure()
+#        show_jtx2_batch(sample_batched)
+#        plt.axis('off')
+#        plt.ioff()
+#        plt.show()
+#        print("left_encoder,right_encoder,left_speed,right_speed: \n{}".format(sample_batched['jtx2']))
+#        #print('This shows successful conversion of datatype from a numpy array to a Tensor array')
+#        break
+# =============================================================================
+    
+def loop_logger(filename, level=logging.DEBUG):
+    """
+    Method to return a custom logger with the given name and logger
+    """
+    logger = logging.getLogger(__name__)
+    logger.handlers = []
+    logger.setLevel(level)
+    #ch = logging.StreamHandler(sys.stdout)
+    #logger.addHandler(ch)
+    fh = logging.FileHandler((filename+'.txt'), mode='a')
+    logger.addHandler(fh)
+    logger.propagate = 1
+    return logger
 
-# Initialize Model
-net = EndToEndNet().to(device, non_blocking=True)
-# Non Blocking is an optimization for CUDA for asynchronous GPU copies
-# This works in conjunction with pin_memory=true
+def weight_init(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight.data, nn.init.calculate_gain('relu'))
+        m.bias.data.zero_()
 
-now = datetime.datetime.now()
+        
 
-loss = None
+#fh = logging.FileHandler('%s_%d.txt' % (filename, (j+1)))
+#logger.addHandler(fh)
+#return logger
+
+
+#batch_size = 40
+        
+# Helper function to show a batch so we can see what is happening
+
+
+
 # See URL below, cleans loss for the next iteration of the loop 
 # https://discuss.pytorch.org/t/best-practices-for-maximum-gpu-utilization/13863/6
     
 # Initialize Optimizer
 # Placeholder
 
-# print 
-print("batch size", batch_size, "epochs", epoch, "cpu threads", threads, "date", now, )
-print(net)
+# write all to textfile
+#sys.stdout = open("%s.txt" % text,  "w"), 
+#logger.setLevel(logging.DEBUG) # Process everything, even if it isn't printed\
+#ch = logging.StreamHandler()
+#ch.setLevel(logging.INFO)
+#logger.addHandler(ch)
+#logger = logging.getLogger()
+#fh.setLevel(logging.DEBUG)
+#logger.addHandler(fh)
 
-for i in range(epoch):
-    since = time.time()
-    count = 0
-    total = 0
-    for i_batch, sample_batched in enumerate(dataloader):
-        sample_batched['image'] = sample_batched['image'].cuda()
-        sample_batched['jtx2'] = sample_batched['jtx2'].cuda()
-        criterion = nn.MSELoss()                              # Define loss function
-        optimizer = optim.Adam(net.parameters(),lr=0.00006)   # Initialize optimizer
-        optimizer.zero_grad()                                 # Clear gradients
-        predict = net(sample_batched['image'])                        # Forward pass
-        loss = criterion(predict, sample_batched['jtx2'])            # Calculate loss
-        loss.backward()                                       # Backward pass (calculate gradients)
-        optimizer.step()                                      # Update tunable parameters
-        #print('Epoch',i,'batch',i_batch,'MSE loss', float(loss.item()), "sqrt loss", math.sqrt(float(loss.item())))
-        total += float(loss.item())
-        count += 1
-    print('Epoch',i,'AVG loss',total/count, "SQRT Loss", math.sqrt(total/count), "time", time.time()-since)
-
-# Evaluation Mode
-
-net.eval()
-
-with torch.no_grad():
-    since = time.time()
-    for i_batch, sample_batched in enumerate(evaluation_dataloader):
-        
-        sample_batched['image'] = sample_batched['image'].cuda()
-        sample_batched['jtx2'] = sample_batched['jtx2'].cuda()
-        
-        # Compute Output
-        predict = net(sample_batched['image'])
-        
-        # Compute Evaluation loss
-        evaluation_loss = criterion(predict, sample_batched['jtx2'])
-        total += float(evaluation_loss.item())
-        count += 1
-    print('Evaluation: ''AVG loss',total/count, "Eval SQRT Loss", math.sqrt(total/count), "time", time.time()-since)
-        
-torch.save(net.state_dict(), './%s.pt' % (filename,))
-torch.cuda.empty_cache()
+for j in range(training_sessions):
+    filename = "net2_7"
+    #batch_size = 2 ** (j+2)
+    batch_size = 128
+    
+    transformed_dataset = RobotDataset(csv_file='data/jtx2/data_2018_11_11_13- Q 2nd floor training set.csv',
+                         root_dir='data/jtx2/', 
+                         transform=transforms.Compose([ToTensor()]))
+    
+    transformed_eval_dataset = RobotDataset(csv_file='data/jtx2/data_2018-11-11-15 - Q 1st floor training set.csv',
+                         root_dir='data/jtx2/', 
+                         transform=transforms.Compose([ToTensor()]))
+    
+    dataloader = DataLoader(transformed_dataset, batch_size=batch_size, shuffle=True, num_workers=threads, pin_memory=True)
+    evaluation_dataloader = DataLoader(transformed_eval_dataset, batch_size=batch_size, shuffle=False, num_workers=threads, pin_memory=True)
+    # Host to GPU copies are much faster when they come from pinned (page-locked) memory. 
+    
+    # Initialize Model
+    net = EndToEndNet().to(device, non_blocking=True)
+    # Non Blocking is an optimization for CUDA for asynchronous GPU copies
+    # This works in conjunction with pin_memory=true
+    
+    # Reset Params, this is used to reset each training session in the loop
+    net.apply(weight_init)
+    
+    now = str(datetime.datetime.now())
+    
+    loss = None
+    
+    #filename = filename+'_%d' % (j+2)
+    logger = loop_logger(filename)
+    #print("batch size", batch_size, "epochs", epoch, "cpu threads", threads, "date", now)
+    logger.info((filename, "batch size", batch_size, "epochs", epoch, "cpu threads", threads, "date", now))
+    #print(net)
+    logger.info(net)
+    
+    for i in range(epoch):
+        since = time.time()
+        count = 0
+        total = 0
+        for i_batch, sample_batched in enumerate(dataloader):
+            sample_batched['image'] = sample_batched['image'].cuda()
+            sample_batched['jtx2'] = sample_batched['jtx2'].cuda()
+            criterion = nn.MSELoss()                              # Define loss function
+            optimizer = optim.Adam(net.parameters(),lr=0.00006)   # Initialize optimizer
+            optimizer.zero_grad()                                 # Clear gradients
+            predict = net(sample_batched['image'])                        # Forward pass
+            loss = criterion(predict, sample_batched['jtx2'])            # Calculate loss
+            loss.backward()                                       # Backward pass (calculate gradients)
+            optimizer.step()                                      # Update tunable parameters
+            #print('Epoch',i,'batch',i_batch,'MSE loss', float(loss.item()), "sqrt loss", math.sqrt(float(loss.item())))
+            total += float(loss.item())
+            count += 1
+        #print('Epoch',i,'AVG loss',total/count, "SQRT Loss", math.sqrt(total/count), "time", time.time()-since)
+        logger.info(('Epoch',i,'AVG loss',total/count, "SQRT Loss", math.sqrt(total/count), "time", time.time()-since))
+    
+    # Evaluation Mode
+    
+    net.eval()
+    
+    with torch.no_grad():
+        since = time.time()
+        for i_batch, sample_batched in enumerate(evaluation_dataloader):
+            
+            sample_batched['image'] = sample_batched['image'].cuda()
+            sample_batched['jtx2'] = sample_batched['jtx2'].cuda()
+            
+            # Compute Output
+            predict = net(sample_batched['image'])
+            
+            # Compute Evaluation loss
+            evaluation_loss = criterion(predict, sample_batched['jtx2'])
+            total += float(evaluation_loss.item())
+            count += 1
+        #print('Evaluation: ''AVG loss',total/count, "Eval SQRT Loss", math.sqrt(total/count), "time", time.time()-since)
+        logger.info(('Evaluation: ''AVG loss',total/count, "Eval SQRT Loss", math.sqrt(total/count), "time", time.time()-since))
+            
+    torch.save(net.state_dict(), './%s.pt' % (filename))
+    #torch.cuda.empty_cache()
+    #logging.handlers
+    #sys.stdout.close()
+    
+    print('Completed Session', (j+1), 'of ', training_sessions)
 
 # Training Loop Optimization
 # del loss
